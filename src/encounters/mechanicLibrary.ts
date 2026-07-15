@@ -77,3 +77,13 @@ export const towerSoak: MechanicTemplate = {
   mode: 'soak',
   makeShape: () => ({ kind: 'circle', center: { x: 9, y: 4 }, radius: 5 }),
 }
+
+/** Every mechanic available to pick from when building an encounter. */
+export const allMechanics: MechanicTemplate[] = [
+  raidwide,
+  pointBlankAoe,
+  donutAoe,
+  lineCleave,
+  tailSwing,
+  towerSoak,
+]
