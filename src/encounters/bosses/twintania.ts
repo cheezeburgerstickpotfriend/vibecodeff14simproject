@@ -56,10 +56,10 @@ const ghostPositions = Array.from({ length: GHOST_COUNT }, (_, i) => {
 export const twister: MechanicTemplate = {
   id: 'twintania-twister',
   name: 'Twister',
-  callout: 'The boss begins a long, ominous cast.',
-  instruction: 'in a few seconds you and 7 others get marked — clear every mark before they erupt',
-  telegraphMs: 5000,
-  markDelayMs: 3750,
+  callout: 'The boss begins a short, ominous cast.',
+  instruction: 'you and 7 others get marked partway through — clear every mark before they erupt',
+  telegraphMs: 2000,
+  markDelayMs: 800,
   damage: 50,
   mode: 'avoid',
   makeShape: ({ playerPos }) => ({

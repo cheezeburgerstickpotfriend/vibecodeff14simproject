@@ -53,10 +53,10 @@ or the arrow keys.
     a circle that sweeps across the arena and is dangerous continuously along
     its path, not just at one final spot) plus its arena/boss/player meta.
   - `twintania.ts` — mechanic templates (Cyclonic Wing, Wing Blades, Rear
-    Laser, and Twister — a 5s cast whose mark location isn't revealed until
-    3.75s in (only ~1.25s left to react), landing on you and 7 fixed "ghost"
-    party members clustered with gaps to dodge through) plus its
-    arena/boss/player meta.
+    Laser, and Twister — a 2s cast whose mark location isn't revealed until
+    0.8s in (~1.2s left to react), landing on you and 7 fixed "ghost" party
+    members clustered with gaps to dodge through) plus its arena/boss/player
+    meta.
   - `index.ts` — exports `allBosses`, the registry of every fight.
 - `src/hooks/` — `useGameLoop` (requestAnimationFrame ticking) and
   `useKeyboardMovement` (WASD/arrow input).
@@ -78,9 +78,9 @@ array. It'll automatically show up in the in-app selector for that fight.
 Two optional fields cover trickier mechanics:
 
 - `markDelayMs` — if the AoE's location shouldn't be decided until partway
-  through a longer cast (a mark-under-you mechanic), set this to how many ms
-  after the telegraph appears the mark should land. See `twister` in
-  `twintania.ts`: a 5s cast that marks the player's position 3.75s in,
+  through a cast (a mark-under-you mechanic), set this to how many ms after
+  the telegraph appears the mark should land. See `twister` in
+  `twintania.ts`: a 2s cast that marks the player's position 0.8s in,
   combined with 7 fixed "ghost" positions via `multiCircle`.
 - `continuous` — for a mechanic that should be dangerous throughout its
   telegraph rather than only at one final instant (typically paired with a
