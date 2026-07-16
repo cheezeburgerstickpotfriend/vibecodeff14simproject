@@ -1,4 +1,4 @@
-import type { ActiveMechanic } from '../engine/mechanics'
+import { mechanicProgress, shapeAtProgress, type ActiveMechanic } from '../engine/mechanics'
 import type { ArenaConfig } from '../engine/simulation'
 import type { Vector2 } from '../engine/vector'
 
@@ -21,11 +21,15 @@ function dangerOpacity(mech: ActiveMechanic, timeMs: number): number {
 }
 
 function TelegraphShape({ mech, timeMs }: { mech: ActiveMechanic; timeMs: number }) {
-  const { shape, template } = mech
+  const { template } = mech
   const opacity = dangerOpacity(mech, timeMs)
   const color = template.mode === 'soak' ? '#4ade80' : '#ef4444'
 
-  if (!shape) return null
+  if (!mech.shape) return null
+  // Resolves any moving shapes (e.g. travelingCircle) to their current
+  // position — the same helper stepSimulation uses for hit-testing, so the
+  // telegraph you see always matches what actually gets checked.
+  const shape = shapeAtProgress(mech.shape, mechanicProgress(mech, timeMs))
 
   switch (shape.kind) {
     case 'circle':

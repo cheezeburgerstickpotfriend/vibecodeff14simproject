@@ -59,7 +59,7 @@ export const twister: MechanicTemplate = {
   callout: 'The boss begins a long, ominous cast.',
   instruction: 'in a few seconds you and 7 others get marked — clear every mark before they erupt',
   telegraphMs: 5000,
-  markDelayMs: 2750,
+  markDelayMs: 3750,
   damage: 50,
   mode: 'avoid',
   makeShape: ({ playerPos }) => ({

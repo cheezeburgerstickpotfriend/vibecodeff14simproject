@@ -1,5 +1,5 @@
 import type { CastEvent, ActiveMechanic } from './mechanics'
-import { isInsideShape } from './mechanics'
+import { isInsideShape, mechanicProgress, shapeAtProgress } from './mechanics'
 import type { Vector2 } from './vector'
 import { add, clampToCircle, scale } from './vector'
 
@@ -103,7 +103,8 @@ export function stepSimulation(
     nextCastIndex++
   }
 
-  // Reveal marks whose delay has elapsed, then resolve any mechanics whose timer has expired.
+  // Reveal marks whose delay has elapsed, then resolve any mechanics whose timer has expired
+  // (or, for continuous mechanics, the instant they catch you mid-flight).
   const stillActive: ActiveMechanic[] = []
   for (const mech of active) {
     const revealAtMs = mech.startMs + (mech.template.markDelayMs ?? 0)
@@ -112,12 +113,16 @@ export function stepSimulation(
         ? mech.template.makeShape({ bossPos: state.bossPos, playerPos: pos })
         : mech.shape
 
-    if (timeMs < mech.resolveMs) {
+    const liveShape = shape ? shapeAtProgress(shape, mechanicProgress(mech, timeMs)) : null
+    const inside = liveShape ? isInsideShape(pos, liveShape) : true
+    const hit = mech.template.mode === 'avoid' ? inside : !inside
+
+    const shouldResolveNow = timeMs >= mech.resolveMs || (mech.template.continuous && liveShape !== null && hit)
+    if (!shouldResolveNow) {
       stillActive.push({ ...mech, shape })
       continue
     }
-    const inside = shape ? isInsideShape(pos, shape) : true
-    const hit = mech.template.mode === 'avoid' ? inside : !inside
+
     if (hit) {
       hp = Math.max(0, hp - mech.template.damage)
       log.push({

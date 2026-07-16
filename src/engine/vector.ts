@@ -27,3 +27,9 @@ export const clampToCircle = (p: Vector2, center: Vector2, radius: number): Vect
   if (len <= radius) return p
   return add(center, scale(d, radius / len))
 }
+
+/** Linear interpolation from `a` to `b`; `t=0` is `a`, `t=1` is `b`. */
+export const lerp = (a: Vector2, b: Vector2, t: number): Vector2 => ({
+  x: a.x + (b.x - a.x) * t,
+  y: a.y + (b.y - a.y) * t,
+})

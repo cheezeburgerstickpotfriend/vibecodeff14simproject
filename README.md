@@ -30,8 +30,12 @@ or the arrow keys.
 - `src/engine/` — framework-agnostic simulation core, with no knowledge of
   any specific boss:
   - `vector.ts` — 2D vector math.
-  - `mechanics.ts` — hazard/safe-zone `Shape`s (circle, donut, line, cone) and
-    hit-testing, plus the `MechanicTemplate`/`CastEvent`/`ActiveMechanic` types.
+  - `mechanics.ts` — hazard/safe-zone `Shape`s (circle, donut, line, cone,
+    multiCircle, travelingCircle) and hit-testing, the
+    `MechanicTemplate`/`CastEvent`/`ActiveMechanic` types, and
+    `mechanicProgress`/`shapeAtProgress` — the pair that drives moving
+    telegraphs (see below), used identically by both simulation and rendering
+    so they never desync.
   - `boss.ts` — `BossDefinition` (a fight's id, arena/player meta, and its
     mechanic pool).
   - `simulation.ts` — `GameState`, `initGameState`, and the pure
@@ -45,12 +49,14 @@ or the arrow keys.
 - `src/encounters/bosses/` — one file per fight, each a self-contained
   `BossDefinition`:
   - `theFirstTelegraph.ts` — mechanic templates (Ultimate Wrath, Cataclysm,
-    Rippling Flames, Flame Lance, Tail Swing, Meteor Impact) plus its
-    arena/boss/player meta.
+    Rippling Flames, Flame Lance, Tail Swing, Meteor Impact, and Magma Wave —
+    a circle that sweeps across the arena and is dangerous continuously along
+    its path, not just at one final spot) plus its arena/boss/player meta.
   - `twintania.ts` — mechanic templates (Cyclonic Wing, Wing Blades, Rear
-    Laser, and Twister — a long cast whose mark location isn't revealed
-    until partway through, landing on you and 7 fixed "ghost" party members
-    clustered with gaps to dodge through) plus its arena/boss/player meta.
+    Laser, and Twister — a 5s cast whose mark location isn't revealed until
+    3.75s in (only ~1.25s left to react), landing on you and 7 fixed "ghost"
+    party members clustered with gaps to dodge through) plus its
+    arena/boss/player meta.
   - `index.ts` — exports `allBosses`, the registry of every fight.
 - `src/hooks/` — `useGameLoop` (requestAnimationFrame ticking) and
   `useKeyboardMovement` (WASD/arrow input).
@@ -64,15 +70,24 @@ or the arrow keys.
 
 Add a `MechanicTemplate` to that boss's file (e.g.
 `src/encounters/bosses/theFirstTelegraph.ts`) — pick a `Shape` kind (circle,
-donut, line, cone, or `multiCircle` for several hazard circles at once), a
-`mode` of `'avoid'` or `'soak'`, damage, and telegraph duration — then add it
-to that boss's `mechanics` array. It'll automatically show up in the in-app
-selector for that fight. If the AoE's location shouldn't be decided until
-partway through a longer cast (a mark-under-you mechanic), set `markDelayMs`
-to how many ms after the telegraph appears the mark should land — see
-`twister` in `twintania.ts` for an example that marks the player's position
-2.75s into a 5s cast, combined with 7 fixed "ghost" positions via
-`multiCircle`.
+donut, line, cone, `multiCircle` for several hazard circles at once, or
+`travelingCircle` for one that moves), a `mode` of `'avoid'` or `'soak'`,
+damage, and telegraph duration — then add it to that boss's `mechanics`
+array. It'll automatically show up in the in-app selector for that fight.
+
+Two optional fields cover trickier mechanics:
+
+- `markDelayMs` — if the AoE's location shouldn't be decided until partway
+  through a longer cast (a mark-under-you mechanic), set this to how many ms
+  after the telegraph appears the mark should land. See `twister` in
+  `twintania.ts`: a 5s cast that marks the player's position 3.75s in,
+  combined with 7 fixed "ghost" positions via `multiCircle`.
+- `continuous` — for a mechanic that should be dangerous throughout its
+  telegraph rather than only at one final instant (typically paired with a
+  moving shape like `travelingCircle`). It's hit-tested every tick from the
+  moment it's revealed, ending the mechanic immediately on the first tick
+  you're caught; if you're never caught, it resolves safely once its
+  telegraph runs out. See `magmaWave` in `theFirstTelegraph.ts`.
 
 ## Adding a new boss/fight
 
@@ -85,6 +100,6 @@ array — it'll automatically appear in the `BossPicker`.
 ## Next steps
 
 - Job-specific defensive cooldowns (e.g. a mitigation button on a cooldown).
-- Move telegraphs (e.g. a spreading circle that grows before it resolves).
+- More moving-telegraph shapes (a growing/shrinking circle, a rotating cone).
 - Per-mechanic difficulty/damage tuning from the UI.
 - Groups of more than two simultaneous mechanics.

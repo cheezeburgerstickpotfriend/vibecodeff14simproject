@@ -79,6 +79,18 @@ export const towerSoak: MechanicTemplate = {
   makeShape: () => ({ kind: 'circle', center: { x: 9, y: 4 }, radius: 5 }),
 }
 
+export const magmaWave: MechanicTemplate = {
+  id: 'magma-wave',
+  name: 'Magma Wave',
+  callout: 'A wave of magma begins sweeping across the arena.',
+  instruction: 'get clear of its path and stay clear until it passes',
+  telegraphMs: 4500,
+  damage: 35,
+  mode: 'avoid',
+  continuous: true,
+  makeShape: () => ({ kind: 'travelingCircle', from: { x: -17, y: 0 }, to: { x: 17, y: 0 }, radius: 5 }),
+}
+
 export const theFirstTelegraph: BossDefinition = {
   id: 'the-first-telegraph',
   meta: {
@@ -89,5 +101,5 @@ export const theFirstTelegraph: BossDefinition = {
     playerMaxHp: 150,
     playerSpeed: 9,
   },
-  mechanics: [raidwide, pointBlankAoe, donutAoe, lineCleave, tailSwing, towerSoak],
+  mechanics: [raidwide, pointBlankAoe, donutAoe, lineCleave, tailSwing, towerSoak, magmaWave],
 }

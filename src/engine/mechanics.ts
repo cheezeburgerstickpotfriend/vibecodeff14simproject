@@ -1,5 +1,5 @@
 import type { Vector2 } from './vector'
-import { angleOf, distance, length, sub } from './vector'
+import { angleOf, distance, length, lerp, sub } from './vector'
 
 /** Geometric hazard/safe-zone shapes used by FFXIV-style mechanics. */
 export type Shape =
@@ -8,6 +8,7 @@ export type Shape =
   | { kind: 'line'; origin: Vector2; target: Vector2; width: number; length: number }
   | { kind: 'cone'; origin: Vector2; target: Vector2; angleWidthDeg: number; radius: number }
   | { kind: 'multiCircle'; circles: { center: Vector2; radius: number }[] }
+  | { kind: 'travelingCircle'; from: Vector2; to: Vector2; radius: number }
 
 export function isInsideShape(point: Vector2, shape: Shape): boolean {
   switch (shape.kind) {
@@ -38,7 +39,23 @@ export function isInsideShape(point: Vector2, shape: Shape): boolean {
     }
     case 'multiCircle':
       return shape.circles.some((c) => distance(point, c.center) <= c.radius)
+    case 'travelingCircle':
+      // Called directly (without going through shapeAtProgress first), so
+      // fall back to testing wherever the shape ends up.
+      return distance(point, shape.to) <= shape.radius
   }
+}
+
+/**
+ * Resolves a shape that moves over time into a static one at a given
+ * progress (0 = just revealed, 1 = resolving). Shapes that don't move are
+ * returned unchanged.
+ */
+export function shapeAtProgress(shape: Shape, progress: number) {
+  if (shape.kind === 'travelingCircle') {
+    return { kind: 'circle' as const, center: lerp(shape.from, shape.to, progress), radius: shape.radius }
+  }
+  return shape
 }
 
 /** Whether the mechanic damages you for standing in its shape, or for standing outside it (a soak/tower). */
@@ -69,6 +86,16 @@ export interface MechanicTemplate {
   damage: number
   mode: ResolveMode
   /**
+   * If true, the mechanic damages you the instant you're caught inside its
+   * (possibly moving) shape at any point after it's revealed, instead of
+   * only checking once at resolution — it then ends immediately on that
+   * first hit. If you're never caught, it resolves safely as usual once its
+   * telegraph runs out. Meant for shapes that are dangerous throughout their
+   * motion (e.g. a travelingCircle sweeping across the arena), not just at
+   * their final position.
+   */
+  continuous?: boolean
+  /**
    * Builds the hazard/safe-zone shape at the moment it's captured/revealed
    * (see markDelayMs). Omit to make the mechanic unavoidable (e.g. a
    * raidwide) — it always hits.
@@ -88,4 +115,12 @@ export interface ActiveMechanic {
   shape: Shape | null
   startMs: number
   resolveMs: number
+}
+
+/** 0 right as the mechanic's shape is revealed, 1 at resolution. Drives shape movement and continuous hit-testing. */
+export function mechanicProgress(mech: ActiveMechanic, timeMs: number): number {
+  const revealAtMs = mech.startMs + (mech.template.markDelayMs ?? 0)
+  const duration = mech.resolveMs - revealAtMs
+  if (duration <= 0) return 1
+  return Math.min(1, Math.max(0, (timeMs - revealAtMs) / duration))
 }
