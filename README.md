@@ -82,9 +82,8 @@ Two optional fields cover trickier mechanics:
   the telegraph appears the mark should land. See `twister` in
   `twintania.ts`: a 2s cast that marks the player's position 1.5s in,
   combined with 7 fixed "ghost" positions via `multiCircle`. The HUD's
-  countdown for a mechanic only appears once it's actually revealed (see
-  `Hud.tsx`), matching how the real fight gives no dodge timer during the
-  cast itself — only once marks land.
+  countdown still runs for the mechanic's full telegraph from the moment
+  it's cast, not just from when the mark is revealed.
 - `continuous` — for a mechanic that should be dangerous throughout its
   telegraph rather than only at one final instant (typically paired with a
   moving shape like `travelingCircle`). It's hit-tested every tick from the
