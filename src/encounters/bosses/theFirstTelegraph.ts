@@ -1,4 +1,5 @@
-import type { MechanicTemplate } from '../engine/mechanics'
+import type { BossDefinition } from '../../engine/boss'
+import type { MechanicTemplate } from '../../engine/mechanics'
 
 export const raidwide: MechanicTemplate = {
   id: 'raidwide',
@@ -78,12 +79,15 @@ export const towerSoak: MechanicTemplate = {
   makeShape: () => ({ kind: 'circle', center: { x: 9, y: 4 }, radius: 5 }),
 }
 
-/** Every mechanic available to pick from when building an encounter. */
-export const allMechanics: MechanicTemplate[] = [
-  raidwide,
-  pointBlankAoe,
-  donutAoe,
-  lineCleave,
-  tailSwing,
-  towerSoak,
-]
+export const theFirstTelegraph: BossDefinition = {
+  id: 'the-first-telegraph',
+  meta: {
+    name: 'Trial: The First Telegraph',
+    arena: { center: { x: 0, y: 0 }, radius: 20 },
+    bossPos: { x: 0, y: -14 },
+    playerStart: { x: 0, y: 12 },
+    playerMaxHp: 150,
+    playerSpeed: 9,
+  },
+  mechanics: [raidwide, pointBlankAoe, donutAoe, lineCleave, tailSwing, towerSoak],
+}

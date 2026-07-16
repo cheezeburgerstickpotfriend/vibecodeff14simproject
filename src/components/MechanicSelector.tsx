@@ -6,6 +6,8 @@ interface MechanicSelectorProps {
   onToggle: (id: string) => void
   randomize: boolean
   onRandomizeChange: (value: boolean) => void
+  overlap: boolean
+  onOverlapChange: (value: boolean) => void
 }
 
 export function MechanicSelector({
@@ -14,6 +16,8 @@ export function MechanicSelector({
   onToggle,
   randomize,
   onRandomizeChange,
+  overlap,
+  onOverlapChange,
 }: MechanicSelectorProps) {
   return (
     <div className="mechanic-selector">
@@ -29,14 +33,20 @@ export function MechanicSelector({
           </li>
         ))}
       </ul>
-      <label className="randomize-toggle">
-        <input
-          type="checkbox"
-          checked={randomize}
-          onChange={(e) => onRandomizeChange(e.target.checked)}
-        />
-        Randomize order
-      </label>
+      <div className="options">
+        <label className="option-toggle">
+          <input
+            type="checkbox"
+            checked={randomize}
+            onChange={(e) => onRandomizeChange(e.target.checked)}
+          />
+          Randomize order
+        </label>
+        <label className="option-toggle">
+          <input type="checkbox" checked={overlap} onChange={(e) => onOverlapChange(e.target.checked)} />
+          Overlap mechanics (cast in simultaneous pairs)
+        </label>
+      </div>
     </div>
   )
 }

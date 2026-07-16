@@ -4,22 +4,29 @@ import { Arena } from './components/Arena'
 import { EventLog } from './components/EventLog'
 import { Hud } from './components/Hud'
 import { MechanicSelector } from './components/MechanicSelector'
-import { allMechanics, buildEncounter, encounterMeta } from './encounters/sampleEncounter'
+import { allBosses } from './encounters/bosses'
+import { buildEncounter } from './engine/encounterBuilder'
 import { initGameState, stepSimulation, type Encounter } from './engine/simulation'
 import { useGameLoop } from './hooks/useGameLoop'
 import { useKeyboardMovement } from './hooks/useKeyboardMovement'
 
+// Only one boss exists so far; once more are added this becomes a picker.
+const boss = allBosses[0]
+
 function App() {
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(allMechanics.map((m) => [m.id, true])),
+    Object.fromEntries(boss.mechanics.map((m) => [m.id, true])),
   )
   const [randomize, setRandomize] = useState(false)
-  const [encounter, setEncounter] = useState<Encounter>(() => buildEncounter(allMechanics, false))
+  const [overlap, setOverlap] = useState(false)
+  const [encounter, setEncounter] = useState<Encounter>(() =>
+    buildEncounter(boss, boss.mechanics, { randomize: false, overlap: false }),
+  )
   const [state, setState] = useState(() => initGameState(encounter))
   const moveDirRef = useKeyboardMovement()
 
   const running = state.status === 'running'
-  const selectedCount = useMemo(() => allMechanics.filter((m) => enabled[m.id]).length, [enabled])
+  const selectedCount = useMemo(() => boss.mechanics.filter((m) => enabled[m.id]).length, [enabled])
 
   useGameLoop(
     useCallback(
@@ -34,9 +41,9 @@ function App() {
   const toggleMechanic = (id: string) => setEnabled((prev) => ({ ...prev, [id]: !prev[id] }))
 
   const start = () => {
-    const selected = allMechanics.filter((m) => enabled[m.id])
+    const selected = boss.mechanics.filter((m) => enabled[m.id])
     if (selected.length === 0) return
-    const newEncounter = buildEncounter(selected, randomize)
+    const newEncounter = buildEncounter(boss, selected, { randomize, overlap })
     setEncounter(newEncounter)
     setState({ ...initGameState(newEncounter), status: 'running' })
   }
@@ -46,7 +53,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>{encounterMeta.name}</h1>
+        <h1>{boss.meta.name}</h1>
         <p className="subtitle">Read the telegraph. Get in the right spot. Survive.</p>
       </header>
 
@@ -84,11 +91,13 @@ function App() {
 
           {state.status === 'idle' && (
             <MechanicSelector
-              mechanics={allMechanics}
+              mechanics={boss.mechanics}
               enabled={enabled}
               onToggle={toggleMechanic}
               randomize={randomize}
               onRandomizeChange={setRandomize}
+              overlap={overlap}
+              onOverlapChange={setOverlap}
             />
           )}
         </div>
