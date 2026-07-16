@@ -40,18 +40,24 @@ export const rearLaser: MechanicTemplate = {
   }),
 }
 
-const GHOST_RING_RADIUS = 11
-const GHOST_COUNT = 7
-const TWISTER_MARK_RADIUS = 3
+const BOSS_POS = { x: 0, y: -11 }
+const TWISTER_MARK_RADIUS = 1.2
 
-/** Fixed positions for the 7 simulated raid members, clustered in a ring with gaps to dodge through. */
-const ghostPositions = Array.from({ length: GHOST_COUNT }, (_, i) => {
-  const angle = -Math.PI / 2 + (i / GHOST_COUNT) * Math.PI * 2
-  return {
-    x: Math.cos(angle) * GHOST_RING_RADIUS,
-    y: Math.sin(angle) * GHOST_RING_RADIUS,
-  }
-})
+/**
+ * Fixed positions for the 7 simulated raid members, laid out like a typical
+ * raid stack relative to the boss: one north (in front), one to the
+ * northeast, two just behind, and three further behind with room to spread
+ * into (the player rounds out that back group as the 8th, dynamic mark).
+ */
+const ghostPositions = [
+  { x: BOSS_POS.x, y: BOSS_POS.y - 4 }, // north, in front of the boss
+  { x: BOSS_POS.x + 3, y: BOSS_POS.y - 2 }, // northeast
+  { x: BOSS_POS.x - 3, y: BOSS_POS.y + 4 }, // behind, left
+  { x: BOSS_POS.x + 3, y: BOSS_POS.y + 4 }, // behind, right
+  { x: BOSS_POS.x - 6, y: BOSS_POS.y + 10 }, // further behind, left
+  { x: BOSS_POS.x, y: BOSS_POS.y + 10 }, // further behind, center
+  { x: BOSS_POS.x + 6, y: BOSS_POS.y + 10 }, // further behind, right
+]
 
 export const twister: MechanicTemplate = {
   id: 'twintania-twister',
@@ -76,7 +82,7 @@ export const twintania: BossDefinition = {
   meta: {
     name: 'Twintania',
     arena: { center: { x: 0, y: 0 }, radius: 22 },
-    bossPos: { x: 0, y: -15 },
+    bossPos: BOSS_POS,
     playerStart: { x: 0, y: 13 },
     playerMaxHp: 160,
     playerSpeed: 9,
