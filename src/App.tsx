@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import './App.css'
 import { Arena } from './components/Arena'
+import { BossPicker } from './components/BossPicker'
 import { EventLog } from './components/EventLog'
 import { Hud } from './components/Hud'
 import { MechanicSelector } from './components/MechanicSelector'
@@ -10,10 +11,10 @@ import { initGameState, stepSimulation, type Encounter } from './engine/simulati
 import { useGameLoop } from './hooks/useGameLoop'
 import { useKeyboardMovement } from './hooks/useKeyboardMovement'
 
-// Only one boss exists so far; once more are added this becomes a picker.
-const boss = allBosses[0]
-
 function App() {
+  const [bossId, setBossId] = useState(allBosses[0].id)
+  const boss = useMemo(() => allBosses.find((b) => b.id === bossId) ?? allBosses[0], [bossId])
+
   const [enabled, setEnabled] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(boss.mechanics.map((m) => [m.id, true])),
   )
@@ -26,7 +27,7 @@ function App() {
   const moveDirRef = useKeyboardMovement()
 
   const running = state.status === 'running'
-  const selectedCount = useMemo(() => boss.mechanics.filter((m) => enabled[m.id]).length, [enabled])
+  const selectedCount = useMemo(() => boss.mechanics.filter((m) => enabled[m.id]).length, [boss, enabled])
 
   useGameLoop(
     useCallback(
@@ -37,6 +38,16 @@ function App() {
     ),
     running,
   )
+
+  const selectBoss = (id: string) => {
+    const nextBoss = allBosses.find((b) => b.id === id)
+    if (!nextBoss) return
+    setBossId(id)
+    setEnabled(Object.fromEntries(nextBoss.mechanics.map((m) => [m.id, true])))
+    const newEncounter = buildEncounter(nextBoss, nextBoss.mechanics, { randomize, overlap })
+    setEncounter(newEncounter)
+    setState(initGameState(newEncounter))
+  }
 
   const toggleMechanic = (id: string) => setEnabled((prev) => ({ ...prev, [id]: !prev[id] }))
 
@@ -90,15 +101,18 @@ function App() {
           {state.status === 'failed' && <div className="banner banner-fail">You died. Run it back.</div>}
 
           {state.status === 'idle' && (
-            <MechanicSelector
-              mechanics={boss.mechanics}
-              enabled={enabled}
-              onToggle={toggleMechanic}
-              randomize={randomize}
-              onRandomizeChange={setRandomize}
-              overlap={overlap}
-              onOverlapChange={setOverlap}
-            />
+            <>
+              <BossPicker bosses={allBosses} selectedId={bossId} onSelect={selectBoss} />
+              <MechanicSelector
+                mechanics={boss.mechanics}
+                enabled={enabled}
+                onToggle={toggleMechanic}
+                randomize={randomize}
+                onRandomizeChange={setRandomize}
+                overlap={overlap}
+                onOverlapChange={setOverlap}
+              />
+            </>
           )}
         </div>
 

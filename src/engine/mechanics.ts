@@ -7,6 +7,7 @@ export type Shape =
   | { kind: 'donut'; center: Vector2; innerRadius: number; outerRadius: number }
   | { kind: 'line'; origin: Vector2; target: Vector2; width: number; length: number }
   | { kind: 'cone'; origin: Vector2; target: Vector2; angleWidthDeg: number; radius: number }
+  | { kind: 'multiCircle'; circles: { center: Vector2; radius: number }[] }
 
 export function isInsideShape(point: Vector2, shape: Shape): boolean {
   switch (shape.kind) {
@@ -35,6 +36,8 @@ export function isInsideShape(point: Vector2, shape: Shape): boolean {
       const normalizedDiff = Math.min(diff, 2 * Math.PI - diff)
       return normalizedDiff <= (shape.angleWidthDeg * Math.PI) / 180 / 2
     }
+    case 'multiCircle':
+      return shape.circles.some((c) => distance(point, c.center) <= c.radius)
   }
 }
 
@@ -55,11 +58,20 @@ export interface MechanicTemplate {
   instruction: string
   /** Time in ms from telegraph appearing to the mechanic resolving. */
   telegraphMs: number
+  /**
+   * Ms after the telegraph appears before the hazard shape is captured/revealed.
+   * Defaults to 0 (captured immediately, same instant the telegraph appears).
+   * Useful for long casts whose AoE location isn't fixed until partway through
+   * (e.g. a mark-under-you mechanic where the mark lands wherever you are a
+   * couple seconds into the cast).
+   */
+  markDelayMs?: number
   damage: number
   mode: ResolveMode
   /**
-   * Builds the hazard/safe-zone shape at the moment the telegraph appears.
-   * Omit to make the mechanic unavoidable (e.g. a raidwide) — it always hits.
+   * Builds the hazard/safe-zone shape at the moment it's captured/revealed
+   * (see markDelayMs). Omit to make the mechanic unavoidable (e.g. a
+   * raidwide) — it always hits.
    */
   makeShape?: (ctx: MechanicContext) => Shape
 }

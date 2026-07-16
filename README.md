@@ -18,11 +18,12 @@ npm install
 npm run dev
 ```
 
-Open the printed local URL. Before starting, check/uncheck which mechanics
-you want in the fight, and optionally turn on **Randomize order** (shuffles
-the mechanic sequence) and/or **Overlap mechanics** (casts them two at a
-time instead of one after another, so you have to satisfy both at once).
-Click **Start Encounter** and move with WASD or the arrow keys.
+Open the printed local URL. Pick a fight from the **Fight** picker, then
+check/uncheck which mechanics you want in it, and optionally turn on
+**Randomize order** (shuffles the mechanic sequence) and/or **Overlap
+mechanics** (casts them two at a time instead of one after another, so you
+have to satisfy both at once). Click **Start Encounter** and move with WASD
+or the arrow keys.
 
 ## Project structure
 
@@ -43,24 +44,35 @@ Click **Start Encounter** and move with WASD or the arrow keys.
     (ties it together given `{ randomize, overlap }`).
 - `src/encounters/bosses/` — one file per fight, each a self-contained
   `BossDefinition`:
-  - `theFirstTelegraph.ts` — the current (only) fight: its mechanic
-    templates (Ultimate Wrath, Cataclysm, Rippling Flames, Twister, Tail
-    Swing, Meteor Impact) plus its arena/boss/player meta.
+  - `theFirstTelegraph.ts` — mechanic templates (Ultimate Wrath, Cataclysm,
+    Rippling Flames, Flame Lance, Tail Swing, Meteor Impact) plus its
+    arena/boss/player meta.
+  - `twintania.ts` — mechanic templates (Cyclonic Wing, Wing Blades, Rear
+    Laser, and Twister — a long cast whose mark location isn't revealed
+    until partway through, landing on you and 7 fixed "ghost" party members
+    clustered with gaps to dodge through) plus its arena/boss/player meta.
   - `index.ts` — exports `allBosses`, the registry of every fight.
 - `src/hooks/` — `useGameLoop` (requestAnimationFrame ticking) and
   `useKeyboardMovement` (WASD/arrow input).
 - `src/components/` — `Arena` (SVG rendering of telegraphs/boss/player),
   `Hud` (HP bar, timer, active mechanic callouts — handles any number of
-  simultaneously active mechanics), `EventLog`, `MechanicSelector`
-  (checkboxes to enable/disable mechanics + randomize/overlap toggles).
+  simultaneously active mechanics), `EventLog`, `BossPicker` (choose which
+  registered fight to play), `MechanicSelector` (checkboxes to enable/disable
+  mechanics + randomize/overlap toggles).
 
 ## Adding a new mechanic to a fight
 
 Add a `MechanicTemplate` to that boss's file (e.g.
-`src/encounters/bosses/theFirstTelegraph.ts`) — pick a `Shape` kind, a
+`src/encounters/bosses/theFirstTelegraph.ts`) — pick a `Shape` kind (circle,
+donut, line, cone, or `multiCircle` for several hazard circles at once), a
 `mode` of `'avoid'` or `'soak'`, damage, and telegraph duration — then add it
 to that boss's `mechanics` array. It'll automatically show up in the in-app
-selector for that fight.
+selector for that fight. If the AoE's location shouldn't be decided until
+partway through a longer cast (a mark-under-you mechanic), set `markDelayMs`
+to how many ms after the telegraph appears the mark should land — see
+`twister` in `twintania.ts` for an example that marks the player's position
+2.75s into a 5s cast, combined with 7 fixed "ghost" positions via
+`multiCircle`.
 
 ## Adding a new boss/fight
 
@@ -68,12 +80,10 @@ Create a new file in `src/encounters/bosses/` following the shape of
 `theFirstTelegraph.ts`: its own `MechanicTemplate`s and a `BossDefinition`
 (`id`, `meta` — arena size, boss/player position, HP, speed — and
 `mechanics`). Register it in `src/encounters/bosses/index.ts`'s `allBosses`
-array. `App.tsx` currently just plays `allBosses[0]`; once there's more than
-one, swap that for a boss-picker.
+array — it'll automatically appear in the `BossPicker`.
 
 ## Next steps
 
-- A boss-picker UI now that the engine supports more than one fight.
 - Job-specific defensive cooldowns (e.g. a mitigation button on a cooldown).
 - Move telegraphs (e.g. a spreading circle that grows before it resolves).
 - Per-mechanic difficulty/damage tuning from the UI.

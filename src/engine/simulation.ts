@@ -82,16 +82,15 @@ export function stepSimulation(
   let nextCastIndex = state.nextCastIndex
   let hp = state.player.hp
 
-  // Spawn any telegraphs whose start time has arrived.
+  // Spawn any telegraphs whose start time has arrived. The hazard shape isn't
+  // computed yet — see the reveal step below — so mechanics with a markDelayMs
+  // stay invisible until their mark actually lands.
   while (nextCastIndex < encounter.timeline.length && encounter.timeline[nextCastIndex].startMs <= timeMs) {
     const cast = encounter.timeline[nextCastIndex]
-    const shape = cast.template.makeShape
-      ? cast.template.makeShape({ bossPos: state.bossPos, playerPos: pos })
-      : null
     active.push({
       instanceId: `${cast.template.id}-${cast.startMs}`,
       template: cast.template,
-      shape,
+      shape: null,
       startMs: cast.startMs,
       resolveMs: cast.startMs + cast.template.telegraphMs,
     })
@@ -104,14 +103,20 @@ export function stepSimulation(
     nextCastIndex++
   }
 
-  // Resolve any mechanics whose timer has expired.
+  // Reveal marks whose delay has elapsed, then resolve any mechanics whose timer has expired.
   const stillActive: ActiveMechanic[] = []
   for (const mech of active) {
+    const revealAtMs = mech.startMs + (mech.template.markDelayMs ?? 0)
+    const shape =
+      mech.shape === null && mech.template.makeShape && timeMs >= revealAtMs
+        ? mech.template.makeShape({ bossPos: state.bossPos, playerPos: pos })
+        : mech.shape
+
     if (timeMs < mech.resolveMs) {
-      stillActive.push(mech)
+      stillActive.push({ ...mech, shape })
       continue
     }
-    const inside = mech.shape ? isInsideShape(pos, mech.shape) : true
+    const inside = shape ? isInsideShape(pos, shape) : true
     const hit = mech.template.mode === 'avoid' ? inside : !inside
     if (hit) {
       hp = Math.max(0, hp - mech.template.damage)

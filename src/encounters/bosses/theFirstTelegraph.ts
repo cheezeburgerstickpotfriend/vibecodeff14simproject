@@ -36,7 +36,7 @@ export const donutAoe: MechanicTemplate = {
 
 export const lineCleave: MechanicTemplate = {
   id: 'line-cleave',
-  name: 'Twister',
+  name: 'Flame Lance',
   callout: 'The boss locks on to your position with a beam.',
   instruction: 'step off the line between you and the boss',
   telegraphMs: 3500,

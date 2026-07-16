@@ -76,6 +76,14 @@ function TelegraphShape({ mech, timeMs }: { mech: ActiveMechanic; timeMs: number
       const d = `M ${shape.origin.x} ${shape.origin.y} L ${p1.x} ${p1.y} A ${shape.radius} ${shape.radius} 0 ${largeArc} 1 ${p2.x} ${p2.y} Z`
       return <path d={d} fill={color} opacity={opacity} />
     }
+    case 'multiCircle':
+      return (
+        <>
+          {shape.circles.map((c, i) => (
+            <circle key={i} cx={c.center.x} cy={c.center.y} r={c.radius} fill={color} opacity={opacity} />
+          ))}
+        </>
+      )
   }
 }
 
