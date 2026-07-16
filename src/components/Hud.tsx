@@ -16,6 +16,10 @@ function formatTime(ms: number): string {
 
 export function Hud({ hp, maxHp, timeMs, active }: HudProps) {
   const hpPct = Math.max(0, (hp / maxHp) * 100)
+  // Only show a countdown once the mark/AoE has actually been revealed — a
+  // mechanic still mid-cast (markDelayMs not yet elapsed) doesn't get one,
+  // matching how the real fight only shows a dodge timer once marks land.
+  const revealed = active.filter((mech) => timeMs >= mech.startMs + (mech.template.markDelayMs ?? 0))
 
   return (
     <div className="hud">
@@ -31,8 +35,8 @@ export function Hud({ hp, maxHp, timeMs, active }: HudProps) {
       </div>
 
       <div className="callouts">
-        {active.length === 0 && <div className="callout callout-idle">No mechanics incoming</div>}
-        {active.map((mech) => {
+        {revealed.length === 0 && <div className="callout callout-idle">No mechanics incoming</div>}
+        {revealed.map((mech) => {
           const remainingMs = Math.max(0, mech.resolveMs - timeMs)
           return (
             <div key={mech.instanceId} className={`callout callout-${mech.template.mode}`}>

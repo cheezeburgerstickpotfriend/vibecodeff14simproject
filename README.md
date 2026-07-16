@@ -54,7 +54,7 @@ or the arrow keys.
     its path, not just at one final spot) plus its arena/boss/player meta.
   - `twintania.ts` — mechanic templates (Cyclonic Wing, Wing Blades, Rear
     Laser, and Twister — a 2s cast whose mark location isn't revealed until
-    0.8s in (~1.2s left to react), landing on you and 7 fixed "ghost" party
+    1.5s in (~0.5s left to react), landing on you and 7 fixed "ghost" party
     members clustered with gaps to dodge through) plus its arena/boss/player
     meta.
   - `index.ts` — exports `allBosses`, the registry of every fight.
@@ -80,8 +80,11 @@ Two optional fields cover trickier mechanics:
 - `markDelayMs` — if the AoE's location shouldn't be decided until partway
   through a cast (a mark-under-you mechanic), set this to how many ms after
   the telegraph appears the mark should land. See `twister` in
-  `twintania.ts`: a 2s cast that marks the player's position 0.8s in,
-  combined with 7 fixed "ghost" positions via `multiCircle`.
+  `twintania.ts`: a 2s cast that marks the player's position 1.5s in,
+  combined with 7 fixed "ghost" positions via `multiCircle`. The HUD's
+  countdown for a mechanic only appears once it's actually revealed (see
+  `Hud.tsx`), matching how the real fight gives no dodge timer during the
+  cast itself — only once marks land.
 - `continuous` — for a mechanic that should be dangerous throughout its
   telegraph rather than only at one final instant (typically paired with a
   moving shape like `travelingCircle`). It's hit-tested every tick from the
