@@ -38,7 +38,7 @@ export const deathSentence: MechanicTemplate = {
   roles: ['tank'],
 }
 
-const NEUROLINK_RADIUS = 5
+const NEUROLINK_RADIUS = 2
 
 /**
  * Fixed Neurolink drop points, approximated from a reference diagram of the
@@ -49,7 +49,7 @@ const NEUROLINK_RADIUS = 5
  */
 const neurolinkPositions = {
   d: { x: 9, y: 6 },
-  two: { x: -11, y: 6 },
+  two: { x: -9, y: 6 },
   one: { x: 0, y: -10 },
 }
 
