@@ -123,12 +123,21 @@ export function stepSimulation(
       continue
     }
 
-    if (hit) {
-      hp = Math.max(0, hp - mech.template.damage)
+    if (hit && mech.template.lethal) {
+      hp = 0
       log.push({
         id: nextLogId(),
         timeMs,
-        message: `${mech.template.name} hit you for ${mech.template.damage}.`,
+        message: `${mech.template.name} caught you — instant death.`,
+        kind: 'damage',
+      })
+    } else if (hit) {
+      const damage = mech.template.damage ?? 0
+      hp = Math.max(0, hp - damage)
+      log.push({
+        id: nextLogId(),
+        timeMs,
+        message: `${mech.template.name} hit you for ${damage}.`,
         kind: 'damage',
       })
     } else {

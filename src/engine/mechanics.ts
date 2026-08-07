@@ -1,3 +1,4 @@
+import type { Role } from './role'
 import type { Vector2 } from './vector'
 import { angleOf, distance, length, lerp, sub } from './vector'
 
@@ -83,8 +84,15 @@ export interface MechanicTemplate {
    * couple seconds into the cast).
    */
   markDelayMs?: number
-  damage: number
+  /** Damage dealt on a hit. Irrelevant (and safe to omit) when `lethal` is true. */
+  damage?: number
   mode: ResolveMode
+  /**
+   * If true, a hit ends the encounter immediately regardless of remaining HP
+   * — for mechanics that are an instant kill in the real fight (e.g.
+   * Twintania's Twister), rather than just heavy damage.
+   */
+  lethal?: boolean
   /**
    * If true, the mechanic damages you the instant you're caught inside its
    * (possibly moving) shape at any point after it's revealed, instead of
@@ -95,6 +103,12 @@ export interface MechanicTemplate {
    * their final position.
    */
   continuous?: boolean
+  /**
+   * Which role(s) this mechanic is relevant to (e.g. a tankbuster is
+   * `['tank']`). Omit for a mechanic that applies to everyone regardless of
+   * role.
+   */
+  roles?: Role[]
   /**
    * Builds the hazard/safe-zone shape at the moment it's captured/revealed
    * (see markDelayMs). Omit to make the mechanic unavoidable (e.g. a

@@ -35,8 +35,13 @@ export function Hud({ hp, maxHp, timeMs, active }: HudProps) {
         {active.map((mech) => {
           const remainingMs = Math.max(0, mech.resolveMs - timeMs)
           return (
-            <div key={mech.instanceId} className={`callout callout-${mech.template.mode}`}>
-              <strong>{mech.template.name}</strong> — {mech.template.instruction}
+            <div
+              key={mech.instanceId}
+              className={`callout callout-${mech.template.mode}${mech.template.lethal ? ' callout-lethal' : ''}`}
+            >
+              <strong>{mech.template.name}</strong>
+              {mech.template.lethal && <span className="lethal-tag">INSTANT DEATH</span>} —{' '}
+              {mech.template.instruction}
               <span className="callout-timer">{(remainingMs / 1000).toFixed(1)}s</span>
             </div>
           )

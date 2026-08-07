@@ -18,12 +18,16 @@ npm install
 npm run dev
 ```
 
-Open the printed local URL. Pick a fight from the **Fight** picker, then
-check/uncheck which mechanics you want in it, and optionally turn on
+Open the printed local URL. Pick a fight from the **Fight** picker and which
+**Role** you're playing (tank/healer/DPS — this filters the mechanic list to
+what that role actually deals with, e.g. tankbusters only show up for Tank),
+then check/uncheck which mechanics you want in it, and optionally turn on
 **Randomize order** (shuffles the mechanic sequence) and/or **Overlap
 mechanics** (casts them two at a time instead of one after another, so you
 have to satisfy both at once). Click **Start Encounter** and move with WASD
-or the arrow keys.
+or the arrow keys. Some mechanics are an instant kill on a hit (flagged
+**INSTANT DEATH** in the HUD) rather than just heavy damage — matching
+mechanics that are genuinely lethal in the real fight.
 
 ## Project structure
 
@@ -38,6 +42,8 @@ or the arrow keys.
     so they never desync.
   - `boss.ts` — `BossDefinition` (a fight's id, arena/player meta, and its
     mechanic pool).
+  - `role.ts` — `Role` (`'tank' | 'healer' | 'dps'`), used to filter a boss's
+    mechanic pool down to what each role actually deals with.
   - `simulation.ts` — `GameState`, `initGameState`, and the pure
     `stepSimulation(state, dtMs, moveDir, encounter)` reducer that drives
     movement, telegraph spawning, and mechanic resolution.
@@ -52,19 +58,26 @@ or the arrow keys.
     Rippling Flames, Flame Lance, Tail Swing, Meteor Impact, and Magma Wave —
     a circle that sweeps across the arena and is dangerous continuously along
     its path, not just at one final spot) plus its arena/boss/player meta.
-  - `twintania.ts` — mechanic templates (Cyclonic Wing, Wing Blades, Rear
-    Laser, and Twister — a 2s cast whose mark location isn't revealed until
-    1.5s in (~0.5s left to react), landing on you and 7 fixed "ghost" party
-    members clustered with gaps to dodge through) plus its arena/boss/player
-    meta.
+  - `twintania.ts` — the real UCoB phase-1 kit, role-tagged and authored in
+    the fight's actual order (opener, then a repeating loop, condensed from
+    the real ~3-minute encounter for playability): Plummet (tank cleave
+    opener), Twister (lethal — a 2s cast whose mark location isn't revealed
+    until 1.5s in, landing on you and 7 fixed "ghost" party members), Fireball
+    (a stack mechanic normally shared with the party; solo, you take it all),
+    Death Sentence (tankbuster), and Hatch (lethal soak — stand in the
+    Neurolink zone under the boss when it arrives, or it wipes the raid).
+    Role filtering approximates the real fight's 74%/44%/0% HP-gated
+    Neurolink phases as fixed points in the sequence, since this sim has no
+    boss-HP/DPS model to gate on directly.
   - `index.ts` — exports `allBosses`, the registry of every fight.
 - `src/hooks/` — `useGameLoop` (requestAnimationFrame ticking) and
   `useKeyboardMovement` (WASD/arrow input).
 - `src/components/` — `Arena` (SVG rendering of telegraphs/boss/player),
-  `Hud` (HP bar, timer, active mechanic callouts — handles any number of
-  simultaneously active mechanics), `EventLog`, `BossPicker` (choose which
-  registered fight to play), `MechanicSelector` (checkboxes to enable/disable
-  mechanics + randomize/overlap toggles).
+  `Hud` (HP bar, timer, active mechanic callouts, an INSTANT DEATH tag for
+  lethal mechanics — handles any number of simultaneously active mechanics),
+  `EventLog`, `BossPicker` (choose which registered fight to play),
+  `RoleSelector` (choose tank/healer/DPS), `MechanicSelector` (checkboxes to
+  enable/disable mechanics + randomize/overlap toggles, shown per-role).
 
 ## Adding a new mechanic to a fight
 
@@ -91,6 +104,22 @@ Two optional fields cover trickier mechanics:
   you're caught; if you're never caught, it resolves safely once its
   telegraph runs out. See `magmaWave` in `theFirstTelegraph.ts`.
 
+Two more optional fields:
+
+- `lethal` — a hit ends the encounter immediately regardless of remaining HP
+  (and `damage` becomes irrelevant, safe to omit). Use for mechanics that are
+  a genuine instant kill in the real fight, like `twister` and `hatch` in
+  `twintania.ts`.
+- `roles` — an array of `Role` (`'tank' | 'healer' | 'dps'`) this mechanic is
+  relevant to. Omit for a mechanic everyone deals with regardless of role
+  (Twister, Fireball); set it for role-specific ones (`['tank']` for a
+  tankbuster, `['healer', 'dps']` for a non-tank mechanic like Hatch). The
+  `RoleSelector` filters a boss's `mechanics` array down to whichever role is
+  selected before it ever reaches the picker or the timeline, repeats and
+  order intact — so an authored `mechanics` array like Twintania's (opener,
+  then a repeating loop) reproduces a role-appropriate slice of the real
+  fight's sequence without needing a separate timeline per role.
+
 ## Adding a new boss/fight
 
 Create a new file in `src/encounters/bosses/` following the shape of
@@ -105,3 +134,8 @@ array — it'll automatically appear in the `BossPicker`.
 - More moving-telegraph shapes (a growing/shrinking circle, a rotating cone).
 - Per-mechanic difficulty/damage tuning from the UI.
 - Groups of more than two simultaneous mechanics.
+- A real boss-HP/DPS model, so HP-gated phases (like Twintania's Neurolinks)
+  can trigger on actual percentage thresholds instead of fixed sequence
+  position.
+- The rest of The Unending Coil of Bahamut: Nael deus Darnus, Bahamut Prime,
+  the combined Nael+Twintania phase, and the final golden Bahamut Prime.

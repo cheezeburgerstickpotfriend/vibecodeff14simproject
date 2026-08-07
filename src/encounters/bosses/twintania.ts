@@ -1,46 +1,56 @@
 import type { BossDefinition } from '../../engine/boss'
 import type { MechanicTemplate } from '../../engine/mechanics'
 
-export const cyclonicWing: MechanicTemplate = {
-  id: 'twintania-raidwide',
-  name: 'Cyclonic Wing',
-  callout: 'The boss beats its wings, buffeting the whole arena.',
-  instruction: 'unavoidable — just take it',
-  telegraphMs: 3000,
-  damage: 15,
-  mode: 'avoid',
-  // no makeShape => always hits, regardless of position
-}
-
-export const wingBlades: MechanicTemplate = {
-  id: 'twintania-point-blank',
-  name: 'Wing Blades',
-  callout: 'The boss folds its wings in, gathering force.',
-  instruction: 'get far away from the boss',
-  telegraphMs: 4000,
-  damage: 40,
-  mode: 'avoid',
-  makeShape: ({ bossPos }) => ({ kind: 'circle', center: bossPos, radius: 13 }),
-}
-
-export const rearLaser: MechanicTemplate = {
-  id: 'twintania-line-cleave',
-  name: 'Rear Laser',
-  callout: 'A targeting reticle locks on to you.',
-  instruction: 'step off the line between you and the boss',
-  telegraphMs: 3500,
-  damage: 40,
-  mode: 'avoid',
-  makeShape: ({ bossPos, playerPos }) => ({
-    kind: 'line',
-    origin: bossPos,
-    target: playerPos,
-    width: 6,
-    length: 45,
-  }),
-}
-
 const BOSS_POS = { x: 0, y: -11 }
+
+export const plummet: MechanicTemplate = {
+  id: 'twintania-plummet',
+  name: 'Plummet',
+  callout: 'The boss slams down in a heavy cleave.',
+  instruction: 'brace for the tankbuster',
+  telegraphMs: 1200,
+  damage: 45,
+  mode: 'avoid',
+  roles: ['tank'],
+  // no makeShape => always hits (it's aimed straight at you)
+}
+
+export const fireball: MechanicTemplate = {
+  id: 'twintania-fireball',
+  name: 'Fireball',
+  callout: 'The boss marks you with a fireball.',
+  instruction: 'normally shared with the party by stacking — solo, you take it all',
+  telegraphMs: 4000,
+  damage: 35,
+  mode: 'avoid',
+  // no makeShape => always hits
+}
+
+export const deathSentence: MechanicTemplate = {
+  id: 'twintania-death-sentence',
+  name: 'Death Sentence',
+  callout: 'The boss marks you for execution.',
+  instruction: 'brace for the tankbuster',
+  telegraphMs: 2500,
+  damage: 55,
+  mode: 'avoid',
+  roles: ['tank'],
+}
+
+const NEUROLINK_RADIUS = 6
+
+export const hatch: MechanicTemplate = {
+  id: 'twintania-hatch',
+  name: 'Hatch',
+  callout: 'A hatch drifts toward you as a Neurolink opens beneath the boss.',
+  instruction: 'be standing in the Neurolink when the hatch arrives, or it detonates on the whole raid',
+  telegraphMs: 4000,
+  mode: 'soak',
+  lethal: true,
+  roles: ['healer', 'dps'],
+  makeShape: ({ bossPos }) => ({ kind: 'circle', center: bossPos, radius: NEUROLINK_RADIUS }),
+}
+
 const TWISTER_MARK_RADIUS = 1.2
 
 /**
@@ -63,11 +73,11 @@ export const twister: MechanicTemplate = {
   id: 'twintania-twister',
   name: 'Twister',
   callout: 'The boss begins a short, ominous cast.',
-  instruction: 'you and 7 others get marked partway through — clear every mark before they erupt',
+  instruction: 'you and 7 others get marked partway through — touching any mark is instant death',
   telegraphMs: 2000,
   markDelayMs: 1500,
-  damage: 50,
   mode: 'avoid',
+  lethal: true,
   makeShape: ({ playerPos }) => ({
     kind: 'multiCircle',
     circles: [
@@ -87,5 +97,27 @@ export const twintania: BossDefinition = {
     playerMaxHp: 160,
     playerSpeed: 9,
   },
-  mechanics: [cyclonicWing, wingBlades, rearLaser, twister],
+  // Phase 1's real rotation: an opening tankbuster, then Twister/Fireball/Death
+  // Sentence on repeat, with a Hatch (soaked in the Neurolink under the boss)
+  // dropped roughly every loop — approximating the real fight's 74%/44%/0%
+  // HP-gated Neurolink phases as fixed points in a condensed sequence, since
+  // this sim has no boss HP/DPS model to gate on directly. Role filtering
+  // narrows this same authored order down to what each role actually deals
+  // with: tanks get Plummet/Death Sentence but no Hatch, healers/DPS get
+  // Hatch but not the tankbusters, everyone gets Twister.
+  mechanics: [
+    plummet,
+    twister,
+    fireball,
+    deathSentence,
+    hatch,
+    twister,
+    fireball,
+    deathSentence,
+    hatch,
+    twister,
+    fireball,
+    deathSentence,
+    hatch,
+  ],
 }
