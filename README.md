@@ -64,11 +64,13 @@ mechanics that are genuinely lethal in the real fight.
     opener), Twister (lethal — a 2s cast whose mark location isn't revealed
     until 1.5s in, landing on you and 7 fixed "ghost" party members), Fireball
     (a stack mechanic normally shared with the party; solo, you take it all),
-    Death Sentence (tankbuster), and Hatch (lethal soak — stand in the
-    Neurolink zone under the boss when it arrives, or it wipes the raid).
-    Role filtering approximates the real fight's 74%/44%/0% HP-gated
-    Neurolink phases as fixed points in the sequence, since this sim has no
-    boss-HP/DPS model to gate on directly.
+    Death Sentence (tankbuster), and Hatch (lethal soak against one or more
+    fixed Neurolink zones — three `hatchPhase1/2/3` mechanics, each adding one
+    more cumulative zone at the fixed arena positions Twintania drops them at,
+    matching a reference diagram of the real fight). Role filtering
+    approximates the real fight's 74%/44%/0% HP-gated Neurolink phases as
+    fixed points in the sequence, since this sim has no boss-HP/DPS model to
+    gate on directly.
   - `index.ts` — exports `allBosses`, the registry of every fight.
 - `src/hooks/` — `useGameLoop` (requestAnimationFrame ticking) and
   `useKeyboardMovement` (WASD/arrow input).
@@ -108,8 +110,8 @@ Two more optional fields:
 
 - `lethal` — a hit ends the encounter immediately regardless of remaining HP
   (and `damage` becomes irrelevant, safe to omit). Use for mechanics that are
-  a genuine instant kill in the real fight, like `twister` and `hatch` in
-  `twintania.ts`.
+  a genuine instant kill in the real fight, like `twister` and `hatchPhase1/2/3`
+  in `twintania.ts`.
 - `roles` — an array of `Role` (`'tank' | 'healer' | 'dps'`) this mechanic is
   relevant to. Omit for a mechanic everyone deals with regardless of role
   (Twister, Fireball); set it for role-specific ones (`['tank']` for a

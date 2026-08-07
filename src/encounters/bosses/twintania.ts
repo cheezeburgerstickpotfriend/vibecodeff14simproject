@@ -1,5 +1,6 @@
 import type { BossDefinition } from '../../engine/boss'
 import type { MechanicTemplate } from '../../engine/mechanics'
+import type { Role } from '../../engine/role'
 
 const BOSS_POS = { x: 0, y: -11 }
 
@@ -37,18 +38,60 @@ export const deathSentence: MechanicTemplate = {
   roles: ['tank'],
 }
 
-const NEUROLINK_RADIUS = 6
+const NEUROLINK_RADIUS = 5
 
-export const hatch: MechanicTemplate = {
-  id: 'twintania-hatch',
-  name: 'Hatch',
-  callout: 'A hatch drifts toward you as a Neurolink opens beneath the boss.',
-  instruction: 'be standing in the Neurolink when the hatch arrives, or it detonates on the whole raid',
-  telegraphMs: 4000,
-  mode: 'soak',
+/**
+ * Fixed Neurolink drop points, approximated from a reference diagram of the
+ * arena. They accumulate across the fight: only "d" is active the first time,
+ * "d" + "two" the second, all three the third (matching Twintania dropping a
+ * new Neurolink at each of her 74%/44%/0% HP thresholds without removing the
+ * earlier ones).
+ */
+const neurolinkPositions = {
+  d: { x: 9, y: 6 },
+  two: { x: -11, y: 6 },
+  one: { x: 0, y: -10 },
+}
+
+function neurolinkShape(active: { x: number; y: number }[]) {
+  return {
+    kind: 'multiCircle' as const,
+    circles: active.map((center) => ({ center, radius: NEUROLINK_RADIUS })),
+  }
+}
+
+const hatchBase = {
+  mode: 'soak' as const,
   lethal: true,
-  roles: ['healer', 'dps'],
-  makeShape: ({ bossPos }) => ({ kind: 'circle', center: bossPos, radius: NEUROLINK_RADIUS }),
+  roles: ['healer', 'dps'] as Role[],
+  telegraphMs: 4000,
+}
+
+export const hatchPhase1: MechanicTemplate = {
+  ...hatchBase,
+  id: 'twintania-hatch-1',
+  name: 'Hatch (1st Neurolink)',
+  callout: 'A Neurolink opens and a hatch drifts toward a random ally.',
+  instruction: 'get inside the Neurolink before the hatch arrives, or it wipes the raid',
+  makeShape: () => neurolinkShape([neurolinkPositions.d]),
+}
+
+export const hatchPhase2: MechanicTemplate = {
+  ...hatchBase,
+  id: 'twintania-hatch-2',
+  name: 'Hatch (2nd Neurolink)',
+  callout: 'A second Neurolink opens; hatches drift toward random allies.',
+  instruction: 'get inside either Neurolink before the hatches arrive, or it wipes the raid',
+  makeShape: () => neurolinkShape([neurolinkPositions.d, neurolinkPositions.two]),
+}
+
+export const hatchPhase3: MechanicTemplate = {
+  ...hatchBase,
+  id: 'twintania-hatch-3',
+  name: 'Hatch (3rd Neurolink)',
+  callout: 'A third Neurolink opens; hatches drift toward random allies.',
+  instruction: 'get inside any Neurolink before the hatches arrive, or it wipes the raid',
+  makeShape: () => neurolinkShape([neurolinkPositions.d, neurolinkPositions.two, neurolinkPositions.one]),
 }
 
 const TWISTER_MARK_RADIUS = 1.2
@@ -98,26 +141,27 @@ export const twintania: BossDefinition = {
     playerSpeed: 9,
   },
   // Phase 1's real rotation: an opening tankbuster, then Twister/Fireball/Death
-  // Sentence on repeat, with a Hatch (soaked in the Neurolink under the boss)
-  // dropped roughly every loop — approximating the real fight's 74%/44%/0%
-  // HP-gated Neurolink phases as fixed points in a condensed sequence, since
-  // this sim has no boss HP/DPS model to gate on directly. Role filtering
-  // narrows this same authored order down to what each role actually deals
-  // with: tanks get Plummet/Death Sentence but no Hatch, healers/DPS get
-  // Hatch but not the tankbusters, everyone gets Twister.
+  // Sentence on repeat, with a Hatch dropped roughly every loop —
+  // approximating the real fight's 74%/44%/0% HP-gated Neurolink phases as
+  // fixed points in a condensed sequence, since this sim has no boss HP/DPS
+  // model to gate on directly. Each Hatch phase adds one more cumulative
+  // Neurolink (1st: D only, 2nd: D+2, 3rd: D+2+1). Role filtering narrows
+  // this same authored order down to what each role actually deals with:
+  // tanks get Plummet/Death Sentence but no Hatch, healers/DPS get Hatch but
+  // not the tankbusters, everyone gets Twister.
   mechanics: [
     plummet,
     twister,
     fireball,
     deathSentence,
-    hatch,
+    hatchPhase1,
     twister,
     fireball,
     deathSentence,
-    hatch,
+    hatchPhase2,
     twister,
     fireball,
     deathSentence,
-    hatch,
+    hatchPhase3,
   ],
 }
