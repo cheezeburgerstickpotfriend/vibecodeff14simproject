@@ -42,10 +42,10 @@ const NEUROLINK_RADIUS = 2
 
 /**
  * Fixed Neurolink drop points, approximated from a reference diagram of the
- * arena. They accumulate across the fight: only "d" is active the first time,
- * "d" + "two" the second, all three the third (matching Twintania dropping a
- * new Neurolink at each of her 74%/44%/0% HP thresholds without removing the
- * earlier ones).
+ * arena. The first two accumulate across the fight (only "d" is active after
+ * the first drop at 74%, "d" + "two" after the second at 44%). "one" drops
+ * only once Twintania is defeated — it's end-of-phase setup, not something
+ * you ever have to soak a live Hatch in during phase 1.
  */
 const neurolinkPositions = {
   d: { x: 9, y: 6 },
@@ -60,38 +60,56 @@ function neurolinkShape(active: { x: number; y: number }[]) {
   }
 }
 
-const hatchBase = {
+const generateBase = {
   mode: 'soak' as const,
   lethal: true,
-  roles: ['healer', 'dps'] as Role[],
+  roles: ['dps'] as Role[], // Generate always marks a random DPS, never a tank or healer
   telegraphMs: 4000,
 }
 
-export const hatchPhase1: MechanicTemplate = {
-  ...hatchBase,
-  id: 'twintania-hatch-1',
-  name: 'Hatch (1st Neurolink)',
-  callout: 'A Neurolink opens and a hatch drifts toward a random ally.',
+export const generatePhase1: MechanicTemplate = {
+  ...generateBase,
+  id: 'twintania-generate-1',
+  name: 'Generate',
+  callout: 'A hatch drifts toward a random ally.',
   instruction: 'get inside the Neurolink before the hatch arrives, or it wipes the raid',
   makeShape: () => neurolinkShape([neurolinkPositions.d]),
 }
 
-export const hatchPhase2: MechanicTemplate = {
-  ...hatchBase,
-  id: 'twintania-hatch-2',
-  name: 'Hatch (2nd Neurolink)',
-  callout: 'A second Neurolink opens; hatches drift toward random allies.',
-  instruction: 'get inside either Neurolink before the hatches arrive, or it wipes the raid',
+export const generatePhase2: MechanicTemplate = {
+  ...generateBase,
+  id: 'twintania-generate-2',
+  name: 'Generate (Double)',
+  callout: 'Two hatches drift toward random allies at once.',
+  instruction: 'get inside either Neurolink before the hatches arrive — a second hit is always lethal',
   makeShape: () => neurolinkShape([neurolinkPositions.d, neurolinkPositions.two]),
 }
 
-export const hatchPhase3: MechanicTemplate = {
-  ...hatchBase,
-  id: 'twintania-hatch-3',
-  name: 'Hatch (3rd Neurolink)',
-  callout: 'A third Neurolink opens; hatches drift toward random allies.',
-  instruction: 'get inside any Neurolink before the hatches arrive, or it wipes the raid',
-  makeShape: () => neurolinkShape([neurolinkPositions.d, neurolinkPositions.two, neurolinkPositions.one]),
+const LIQUID_HELL_RADIUS = 3
+
+const liquidHellBase = {
+  mode: 'avoid' as const,
+  lethal: true,
+  roles: ['healer', 'dps'] as Role[], // Twintania targets whoever is out at range, never the tank
+  telegraphMs: 2000,
+}
+
+export const liquidHellDistance: MechanicTemplate = {
+  ...liquidHellBase,
+  id: 'twintania-liquid-hell-distance',
+  name: 'Liquid Hell',
+  callout: 'A fire puddle begins forming beneath you.',
+  instruction: 'move off the puddle before it ignites',
+  makeShape: ({ playerPos }) => ({ kind: 'circle', center: playerPos, radius: LIQUID_HELL_RADIUS }),
+}
+
+export const liquidHellTarget: MechanicTemplate = {
+  ...liquidHellBase,
+  id: 'twintania-liquid-hell-target',
+  name: 'Liquid Hell (Targeted)',
+  callout: "A fire puddle begins forming beneath you — this one can't be baited away.",
+  instruction: 'move off the puddle before it ignites',
+  makeShape: ({ playerPos }) => ({ kind: 'circle', center: playerPos, radius: LIQUID_HELL_RADIUS }),
 }
 
 const TWISTER_MARK_RADIUS = 1.2
@@ -130,6 +148,8 @@ export const twister: MechanicTemplate = {
   }),
 }
 
+const FIVE = [0, 1, 2, 3, 4]
+
 export const twintania: BossDefinition = {
   id: 'twintania',
   meta: {
@@ -140,28 +160,47 @@ export const twintania: BossDefinition = {
     playerMaxHp: 160,
     playerSpeed: 9,
   },
-  // Phase 1's real rotation: an opening tankbuster, then Twister/Fireball/Death
-  // Sentence on repeat, with a Hatch dropped roughly every loop —
-  // approximating the real fight's 74%/44%/0% HP-gated Neurolink phases as
-  // fixed points in a condensed sequence, since this sim has no boss HP/DPS
-  // model to gate on directly. Each Hatch phase adds one more cumulative
-  // Neurolink (1st: D only, 2nd: D+2, 3rd: D+2+1). Role filtering narrows
-  // this same authored order down to what each role actually deals with:
-  // tanks get Plummet/Death Sentence but no Hatch, healers/DPS get Hatch but
-  // not the tankbusters, everyone gets Twister.
+  // Authored as the fight's three real, distinct rotations (one loop each,
+  // condensed from the real ~3-minute/multi-loop encounter for playability —
+  // Liquid Hell's 5-hit barrages already make a single pass through all three
+  // comparable in length to the real fight):
+  //
+  // Pull (100-74%): Plummet, Twister+Fireball, Death Sentence.
+  // 74-44% (1st Neurolink @ D): Liquid Hell x5, Generate, Liquid Hell x5,
+  //   Death Sentence, Generate, Twister, Plummet.
+  // 44-0% (2nd Neurolink @ "2"; every Generate is now doubled and soaks
+  //   against both Neurolinks): Liquid Hell x5, Generate x2, targeted
+  //   Liquid Hell x5, Fireball, Death Sentence, Generate, Twister, Plummet.
+  //
+  // Role filtering narrows this to what each role deals with: tanks get
+  // Plummet/Death Sentence but not Generate/Liquid Hell; DPS get everything;
+  // healers get Liquid Hell and Twister/Fireball but not Generate (Generate
+  // only ever marks a DPS).
   mechanics: [
+    // --- Pull (100%-74%) ---
     plummet,
     twister,
     fireball,
     deathSentence,
-    hatchPhase1,
+
+    // --- First Neurolink drop (74%-44%) ---
+    ...FIVE.map(() => liquidHellDistance),
+    generatePhase1,
+    ...FIVE.map(() => liquidHellDistance),
+    deathSentence,
+    generatePhase1,
     twister,
+    plummet,
+
+    // --- Second Neurolink drop (44%-0%) ---
+    ...FIVE.map(() => liquidHellDistance),
+    generatePhase2,
+    generatePhase2,
+    ...FIVE.map(() => liquidHellTarget),
     fireball,
     deathSentence,
-    hatchPhase2,
+    generatePhase2,
     twister,
-    fireball,
-    deathSentence,
-    hatchPhase3,
+    plummet,
   ],
 }

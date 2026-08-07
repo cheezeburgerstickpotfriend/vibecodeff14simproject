@@ -58,19 +58,30 @@ mechanics that are genuinely lethal in the real fight.
     Rippling Flames, Flame Lance, Tail Swing, Meteor Impact, and Magma Wave —
     a circle that sweeps across the arena and is dangerous continuously along
     its path, not just at one final spot) plus its arena/boss/player meta.
-  - `twintania.ts` — the real UCoB phase-1 kit, role-tagged and authored in
-    the fight's actual order (opener, then a repeating loop, condensed from
-    the real ~3-minute encounter for playability): Plummet (tank cleave
-    opener), Twister (lethal — a 2s cast whose mark location isn't revealed
-    until 1.5s in, landing on you and 7 fixed "ghost" party members), Fireball
-    (a stack mechanic normally shared with the party; solo, you take it all),
-    Death Sentence (tankbuster), and Hatch (lethal soak against one or more
-    fixed Neurolink zones — three `hatchPhase1/2/3` mechanics, each adding one
-    more cumulative zone at the fixed arena positions Twintania drops them at,
-    matching a reference diagram of the real fight). Role filtering
-    approximates the real fight's 74%/44%/0% HP-gated Neurolink phases as
-    fixed points in the sequence, since this sim has no boss-HP/DPS model to
-    gate on directly.
+  - `twintania.ts` — the real UCoB phase-1 kit, authored as the fight's three
+    actual rotations back to back (one loop each, condensed from the real
+    ~3-minute/multi-loop encounter — Liquid Hell's full 5-hit barrages already
+    make a single pass comparable in length to the real fight):
+    - **Pull (100-74%)**: Plummet (tank cleave opener), Twister (lethal — a 2s
+      cast whose mark isn't revealed until 1.5s in, landing on you and 7 fixed
+      "ghost" party members), Fireball (a stack mechanic normally shared with
+      the party; solo, you take it all), Death Sentence (tankbuster).
+    - **74%-44%** (1st Neurolink drop): `liquidHellDistance` ×5 (a fire puddle
+      dropped at your own position — move off it before it ignites), Generate
+      (`generatePhase1`, lethal soak against the one active Neurolink zone),
+      repeated, then Death Sentence/Generate/Twister/Plummet again.
+    - **44%-0%** (2nd Neurolink drop): the same shape, but Generate is now
+      `generatePhase2` (soaks against both Neurolinks — a second hit is always
+      lethal per Mana Hypersensitivity in the real fight, not currently
+      modeled here) and a targeted, unbaitable `liquidHellTarget` ×5 barrage
+      replaces the second Liquid Hell round.
+
+    Neurolink positions/sizes were reverse-engineered from a reference
+    diagram; a third Neurolink position exists in the data (dropped only once
+    Twintania is defeated) but isn't used by any live mechanic in phase 1.
+    Role filtering narrows this to what each role deals with: tanks get
+    Plummet/Death Sentence only; Generate only ever marks a DPS; Liquid Hell
+    can hit healers or DPS but never a tank; everyone gets Twister/Fireball.
   - `index.ts` — exports `allBosses`, the registry of every fight.
 - `src/hooks/` — `useGameLoop` (requestAnimationFrame ticking) and
   `useKeyboardMovement` (WASD/arrow input).
@@ -110,17 +121,17 @@ Two more optional fields:
 
 - `lethal` — a hit ends the encounter immediately regardless of remaining HP
   (and `damage` becomes irrelevant, safe to omit). Use for mechanics that are
-  a genuine instant kill in the real fight, like `twister` and `hatchPhase1/2/3`
-  in `twintania.ts`.
+  a genuine instant kill in the real fight, like `twister`, `generatePhase1/2`,
+  and the `liquidHell*` mechanics in `twintania.ts`.
 - `roles` — an array of `Role` (`'tank' | 'healer' | 'dps'`) this mechanic is
   relevant to. Omit for a mechanic everyone deals with regardless of role
   (Twister, Fireball); set it for role-specific ones (`['tank']` for a
-  tankbuster, `['healer', 'dps']` for a non-tank mechanic like Hatch). The
+  tankbuster, `['dps']` for Generate — it only ever marks a DPS). The
   `RoleSelector` filters a boss's `mechanics` array down to whichever role is
   selected before it ever reaches the picker or the timeline, repeats and
-  order intact — so an authored `mechanics` array like Twintania's (opener,
-  then a repeating loop) reproduces a role-appropriate slice of the real
-  fight's sequence without needing a separate timeline per role.
+  order intact — so an authored `mechanics` array like Twintania's (three
+  distinct phase rotations back to back) reproduces a role-appropriate slice
+  of the real fight's sequence without needing a separate timeline per role.
 
 ## Adding a new boss/fight
 
@@ -139,5 +150,8 @@ array — it'll automatically appear in the `BossPicker`.
 - A real boss-HP/DPS model, so HP-gated phases (like Twintania's Neurolinks)
   can trigger on actual percentage thresholds instead of fixed sequence
   position.
+- A status-effect system, so cross-mechanic debuffs like Mana Hypersensitivity
+  (getting hit by one Generate hatch makes a second one always lethal) can be
+  modeled instead of every Hatch/Generate resolving independently.
 - The rest of The Unending Coil of Bahamut: Nael deus Darnus, Bahamut Prime,
   the combined Nael+Twintania phase, and the final golden Bahamut Prime.
