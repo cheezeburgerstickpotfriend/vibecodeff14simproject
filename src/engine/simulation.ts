@@ -1,5 +1,5 @@
-import type { CastEvent, ActiveMechanic } from './mechanics'
-import { isInsideShape, mechanicProgress, shapeAtProgress } from './mechanics'
+import type { CastEvent, ActiveMechanic, MechanicContext, Shape } from './mechanics'
+import { isInsideShape, liveHazardShape, mechanicProgress, shapeAtProgress } from './mechanics'
 import type { Vector2 } from './vector'
 import { add, clampToCircle, scale } from './vector'
 
@@ -60,6 +60,47 @@ export function initGameState(encounter: Encounter): GameState {
 }
 
 /**
+ * Reveals a mechanic's hazard shape(s) as of `timeMs`: a single capture at
+ * markDelayMs for ordinary mechanics, or — for `repeatMarks` mechanics — as
+ * many accumulated marks (each a fresh makeShape call, unioned into a
+ * growing multiCircle) as should have landed by now.
+ */
+function revealShape(
+  mech: ActiveMechanic,
+  timeMs: number,
+  ctx: MechanicContext,
+): { shape: Shape | null; marksRevealed: number; markTimestamps: number[] } {
+  const { template } = mech
+  if (!template.makeShape) {
+    return { shape: mech.shape, marksRevealed: mech.marksRevealed ?? 0, markTimestamps: mech.markTimestamps ?? [] }
+  }
+
+  if (template.repeatMarks) {
+    const { count, intervalMs } = template.repeatMarks
+    let shape = mech.shape
+    let marksRevealed = mech.marksRevealed ?? 0
+    let markTimestamps = mech.markTimestamps ?? []
+    while (
+      marksRevealed < count &&
+      timeMs >= mech.startMs + (template.markDelayMs ?? 0) + marksRevealed * intervalMs
+    ) {
+      const mark = template.makeShape(ctx)
+      if (mark.kind === 'circle') {
+        const existing = shape && shape.kind === 'multiCircle' ? shape.circles : []
+        shape = { kind: 'multiCircle', circles: [...existing, { center: mark.center, radius: mark.radius }] }
+        markTimestamps = [...markTimestamps, timeMs]
+      }
+      marksRevealed++
+    }
+    return { shape, marksRevealed, markTimestamps }
+  }
+
+  const revealAtMs = mech.startMs + (template.markDelayMs ?? 0)
+  const shape = mech.shape === null && timeMs >= revealAtMs ? template.makeShape(ctx) : mech.shape
+  return { shape, marksRevealed: 0, markTimestamps: [] }
+}
+
+/**
  * Advances the simulation by `dtMs`, moving the player by `moveDir` (a unit-ish
  * vector) and resolving any mechanics whose telegraph timer has elapsed.
  * Pure function: returns a new GameState, does not mutate the input.
@@ -107,19 +148,20 @@ export function stepSimulation(
   // (or, for continuous mechanics, the instant they catch you mid-flight).
   const stillActive: ActiveMechanic[] = []
   for (const mech of active) {
-    const revealAtMs = mech.startMs + (mech.template.markDelayMs ?? 0)
-    const shape =
-      mech.shape === null && mech.template.makeShape && timeMs >= revealAtMs
-        ? mech.template.makeShape({ bossPos: state.bossPos, playerPos: pos })
-        : mech.shape
+    const { shape, marksRevealed, markTimestamps } = revealShape(mech, timeMs, {
+      bossPos: state.bossPos,
+      playerPos: pos,
+    })
+    const revealedMech = { ...mech, shape, marksRevealed, markTimestamps }
 
-    const liveShape = shape ? shapeAtProgress(shape, mechanicProgress(mech, timeMs)) : null
+    const hazardShape = liveHazardShape(revealedMech, timeMs)
+    const liveShape = hazardShape ? shapeAtProgress(hazardShape, mechanicProgress(mech, timeMs)) : null
     const inside = liveShape ? isInsideShape(pos, liveShape) : true
     const hit = mech.template.mode === 'avoid' ? inside : !inside
 
     const shouldResolveNow = timeMs >= mech.resolveMs || (mech.template.continuous && liveShape !== null && hit)
     if (!shouldResolveNow) {
-      stillActive.push({ ...mech, shape })
+      stillActive.push(revealedMech)
       continue
     }
 

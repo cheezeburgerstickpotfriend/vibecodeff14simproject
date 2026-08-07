@@ -86,20 +86,34 @@ export const generatePhase2: MechanicTemplate = {
 }
 
 const LIQUID_HELL_RADIUS = 3
+const LIQUID_HELL_MARK_COUNT = 5
+const LIQUID_HELL_MARK_INTERVAL_MS = 1500
+const LIQUID_HELL_IGNITE_DELAY_MS = 700
+const LIQUID_HELL_LINGER_MS = 4000
 
 const liquidHellBase = {
   mode: 'avoid' as const,
   lethal: true,
+  continuous: true,
   roles: ['healer', 'dps'] as Role[], // Twintania targets whoever is out at range, never the tank
-  telegraphMs: 2000,
+  // 5 puddles land in a row, one every intervalMs. Each takes igniteDelayMs
+  // to actually start burning (giving a moment to step off the exact spot
+  // you were just standing on when it dropped), then all of them keep
+  // burning for LIQUID_HELL_LINGER_MS after the last one lands.
+  telegraphMs: (LIQUID_HELL_MARK_COUNT - 1) * LIQUID_HELL_MARK_INTERVAL_MS + LIQUID_HELL_LINGER_MS,
+  repeatMarks: {
+    count: LIQUID_HELL_MARK_COUNT,
+    intervalMs: LIQUID_HELL_MARK_INTERVAL_MS,
+    igniteDelayMs: LIQUID_HELL_IGNITE_DELAY_MS,
+  },
 }
 
 export const liquidHellDistance: MechanicTemplate = {
   ...liquidHellBase,
   id: 'twintania-liquid-hell-distance',
   name: 'Liquid Hell',
-  callout: 'A fire puddle begins forming beneath you.',
-  instruction: 'move off the puddle before it ignites',
+  callout: 'Fire puddles begin dropping beneath you, one after another.',
+  instruction: 'keep moving — every puddle keeps burning long after it lands',
   makeShape: ({ playerPos }) => ({ kind: 'circle', center: playerPos, radius: LIQUID_HELL_RADIUS }),
 }
 
@@ -107,8 +121,8 @@ export const liquidHellTarget: MechanicTemplate = {
   ...liquidHellBase,
   id: 'twintania-liquid-hell-target',
   name: 'Liquid Hell (Targeted)',
-  callout: "A fire puddle begins forming beneath you — this one can't be baited away.",
-  instruction: 'move off the puddle before it ignites',
+  callout: "Fire puddles begin dropping beneath you — this barrage can't be baited away.",
+  instruction: 'keep moving — every puddle keeps burning long after it lands',
   makeShape: ({ playerPos }) => ({ kind: 'circle', center: playerPos, radius: LIQUID_HELL_RADIUS }),
 }
 
@@ -148,8 +162,6 @@ export const twister: MechanicTemplate = {
   }),
 }
 
-const FIVE = [0, 1, 2, 3, 4]
-
 export const twintania: BossDefinition = {
   id: 'twintania',
   meta: {
@@ -162,15 +174,16 @@ export const twintania: BossDefinition = {
   },
   // Authored as the fight's three real, distinct rotations (one loop each,
   // condensed from the real ~3-minute/multi-loop encounter for playability —
-  // Liquid Hell's 5-hit barrages already make a single pass through all three
-  // comparable in length to the real fight):
+  // each Liquid Hell entry is a single mechanic instance representing its
+  // whole 5-puddle barrage (see repeatMarks above), already comparable in
+  // length to the real fight:
   //
   // Pull (100-74%): Plummet, Twister+Fireball, Death Sentence.
-  // 74-44% (1st Neurolink @ D): Liquid Hell x5, Generate, Liquid Hell x5,
+  // 74-44% (1st Neurolink @ D): Liquid Hell, Generate, Liquid Hell,
   //   Death Sentence, Generate, Twister, Plummet.
   // 44-0% (2nd Neurolink @ "2"; every Generate is now doubled and soaks
-  //   against both Neurolinks): Liquid Hell x5, Generate x2, targeted
-  //   Liquid Hell x5, Fireball, Death Sentence, Generate, Twister, Plummet.
+  //   against both Neurolinks): Liquid Hell, Generate x2, targeted
+  //   Liquid Hell, Fireball, Death Sentence, Generate, Twister, Plummet.
   //
   // Role filtering narrows this to what each role deals with: tanks get
   // Plummet/Death Sentence but not Generate/Liquid Hell; DPS get everything;
@@ -184,19 +197,19 @@ export const twintania: BossDefinition = {
     deathSentence,
 
     // --- First Neurolink drop (74%-44%) ---
-    ...FIVE.map(() => liquidHellDistance),
+    liquidHellDistance,
     generatePhase1,
-    ...FIVE.map(() => liquidHellDistance),
+    liquidHellDistance,
     deathSentence,
     generatePhase1,
     twister,
     plummet,
 
     // --- Second Neurolink drop (44%-0%) ---
-    ...FIVE.map(() => liquidHellDistance),
+    liquidHellDistance,
     generatePhase2,
     generatePhase2,
-    ...FIVE.map(() => liquidHellTarget),
+    liquidHellTarget,
     fireball,
     deathSentence,
     generatePhase2,

@@ -112,9 +112,31 @@ export interface MechanicTemplate {
   /**
    * Builds the hazard/safe-zone shape at the moment it's captured/revealed
    * (see markDelayMs). Omit to make the mechanic unavoidable (e.g. a
-   * raidwide) — it always hits.
+   * raidwide) — it always hits. Must return a 'circle' if `repeatMarks` is
+   * set.
    */
   makeShape?: (ctx: MechanicContext) => Shape
+  /**
+   * For mechanics that drop several marks over time instead of one (e.g. a
+   * barrage of ground AoEs), rather than a single reveal at markDelayMs. The
+   * first mark is captured at markDelayMs (default 0), then one more every
+   * `intervalMs` for a total of `count` — each call to makeShape captures
+   * wherever you are at that moment, and marks accumulate into a growing
+   * multiCircle hazard rather than replacing each other. Pair with
+   * `continuous: true` so stepping into any accumulated mark is caught; the
+   * whole group stays dangerous until `telegraphMs` fully elapses, so set
+   * telegraphMs to cover the last mark's time plus however long it should
+   * keep lingering afterward.
+   *
+   * `igniteDelayMs` (default 0) is the grace period between a mark landing
+   * and it starting to count as a hazard. Since a mark for a mark-at-player
+   * mechanic is by definition created exactly on top of the player, leaving
+   * this at 0 with `continuous: true` means it hits the instant it's placed,
+   * no matter how the player later moves — set a real delay (e.g. a few
+   * hundred ms) to give a moment to step away first, matching "it takes a
+   * moment to ignite" mechanics like a fire puddle.
+   */
+  repeatMarks?: { count: number; intervalMs: number; igniteDelayMs?: number }
 }
 
 export interface CastEvent {
@@ -129,6 +151,23 @@ export interface ActiveMechanic {
   shape: Shape | null
   startMs: number
   resolveMs: number
+  /** For repeatMarks mechanics: how many of the scheduled marks have been captured so far. */
+  marksRevealed?: number
+  /** For repeatMarks mechanics: capture time of each circle in `shape.circles`, same order. */
+  markTimestamps?: number[]
+}
+
+/**
+ * The shape actually used for hit-testing a repeatMarks mechanic: only marks
+ * whose igniteDelayMs has elapsed count as live hazards (a freshly-dropped
+ * mark hasn't "ignited" yet). Non-repeatMarks mechanics are returned as-is.
+ */
+export function liveHazardShape(mech: ActiveMechanic, timeMs: number): Shape | null {
+  const { shape, template, markTimestamps } = mech
+  if (!shape || shape.kind !== 'multiCircle' || !template.repeatMarks || !markTimestamps) return shape
+  const igniteDelayMs = template.repeatMarks.igniteDelayMs ?? 0
+  const circles = shape.circles.filter((_, i) => timeMs >= (markTimestamps[i] ?? 0) + igniteDelayMs)
+  return { kind: 'multiCircle', circles }
 }
 
 /** 0 right as the mechanic's shape is revealed, 1 at resolution. Drives shape movement and continuous hit-testing. */

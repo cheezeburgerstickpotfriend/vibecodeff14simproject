@@ -66,15 +66,18 @@ mechanics that are genuinely lethal in the real fight.
       cast whose mark isn't revealed until 1.5s in, landing on you and 7 fixed
       "ghost" party members), Fireball (a stack mechanic normally shared with
       the party; solo, you take it all), Death Sentence (tankbuster).
-    - **74%-44%** (1st Neurolink drop): `liquidHellDistance` ×5 (a fire puddle
-      dropped at your own position — move off it before it ignites), Generate
-      (`generatePhase1`, lethal soak against the one active Neurolink zone),
-      repeated, then Death Sentence/Generate/Twister/Plummet again.
+    - **74%-44%** (1st Neurolink drop): `liquidHellDistance` (a barrage of 5
+      fire puddles, each dropped at wherever you're currently standing — see
+      `repeatMarks` below), Generate (`generatePhase1`, lethal soak against
+      the one active Neurolink zone), repeated, then
+      Death Sentence/Generate/Twister/Plummet again.
     - **44%-0%** (2nd Neurolink drop): the same shape, but Generate is now
-      `generatePhase2` (soaks against both Neurolinks — a second hit is always
-      lethal per Mana Hypersensitivity in the real fight, not currently
-      modeled here) and a targeted, unbaitable `liquidHellTarget` ×5 barrage
-      replaces the second Liquid Hell round.
+      `generatePhase2` (soaks against both Neurolinks) and a targeted,
+      unbaitable `liquidHellTarget` barrage replaces the second Liquid Hell
+      round. (Real-fight nuance not modeled: Mana Hypersensitivity, which
+      would make a second hatch hit always lethal — moot for a solo sim,
+      since it only matters if you'd otherwise go intercept a hatch meant for
+      someone else.)
 
     Neurolink positions/sizes were reverse-engineered from a reference
     diagram; a third Neurolink position exists in the data (dropped only once
@@ -132,6 +135,22 @@ Two more optional fields:
   order intact — so an authored `mechanics` array like Twintania's (three
   distinct phase rotations back to back) reproduces a role-appropriate slice
   of the real fight's sequence without needing a separate timeline per role.
+- `repeatMarks: { count, intervalMs, igniteDelayMs? }` — for a mechanic that
+  drops several marks over time instead of one (e.g. a barrage of ground
+  AoEs), rather than a single reveal at `markDelayMs`. Each mark is a fresh
+  `makeShape` call (so a mark-at-player mechanic captures wherever you
+  currently are) and accumulates into a growing `multiCircle` rather than
+  replacing the last one; pair with `continuous: true` so stepping into any
+  accumulated mark is caught, and set `telegraphMs` to cover the last mark's
+  time plus however long the whole group should keep lingering afterward.
+  `igniteDelayMs` (default 0) is the grace period between a mark landing and
+  it starting to count as a hazard — since a mark-at-player mechanic is by
+  definition created exactly on top of you, leaving this at 0 with
+  `continuous: true` would kill you the instant it's placed no matter how you
+  later move; give it a real delay (a few hundred ms) so there's a moment to
+  step off the spot you were just standing on. See `liquidHellDistance` and
+  `liquidHellTarget` in `twintania.ts`: 5 marks 1.5s apart, each igniting
+  700ms after it lands, all lingering together for 4s after the last one.
 
 ## Adding a new boss/fight
 
@@ -150,8 +169,5 @@ array — it'll automatically appear in the `BossPicker`.
 - A real boss-HP/DPS model, so HP-gated phases (like Twintania's Neurolinks)
   can trigger on actual percentage thresholds instead of fixed sequence
   position.
-- A status-effect system, so cross-mechanic debuffs like Mana Hypersensitivity
-  (getting hit by one Generate hatch makes a second one always lethal) can be
-  modeled instead of every Hatch/Generate resolving independently.
 - The rest of The Unending Coil of Bahamut: Nael deus Darnus, Bahamut Prime,
   the combined Nael+Twintania phase, and the final golden Bahamut Prime.
